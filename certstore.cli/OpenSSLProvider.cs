@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using certstore.cli;
 
 namespace certstore.cli {
     public static class OpenSSLProvider 

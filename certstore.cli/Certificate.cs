@@ -1,7 +1,3 @@
-using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
-
 namespace certstore.cli
 {
     /// <summary>

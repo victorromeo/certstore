@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="system.data.sqlite" Version="1.0.119" />
-    <PackageReference Include="System.Security.Cryptography.OpenSsl" Version="5.0.0" />
   </ItemGroup>
 
 </Project>

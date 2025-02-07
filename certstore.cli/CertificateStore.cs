@@ -1,7 +1,4 @@
-using System;
 using System.Data.SQLite;
-using System.IO;
-using System.Security.Cryptography;
 
 namespace certstore.cli
 {
