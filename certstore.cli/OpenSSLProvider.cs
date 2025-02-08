@@ -44,22 +44,10 @@ namespace certstore.cli {
                 }
 
                 var privateKey = File.ReadAllBytes(privateKeyPath);
-                var publicKey = File.ReadAllBytes(publicKeyPath);
+                var certificate = LoadCertificate(publicKeyPath, "RootCA");
+                certificate.PrivateKey = privateKey;
 
-                var thumbprint = GetThumbprintByOpenSSL(publicKeyPath);
-
-                return new Certificate
-                {
-                    Name = "RootCA",
-                    Issuer = "CertStore.Cli",
-                    ValidFrom = DateTime.UtcNow,
-                    ValidTo = DateTime.UtcNow.AddDays(expiresDays),
-                    Thumbprint = thumbprint,
-                    Subject = commonName,
-                    PublicKey = publicKey,
-                    PrivateKey = privateKey,
-                    Format = "PEM"
-                };
+                return certificate;
             }
         }
 
@@ -109,23 +97,10 @@ namespace certstore.cli {
                 }
 
                 var privateKey = File.ReadAllBytes(privateKeyPath);
-                var publicKey = File.ReadAllBytes(publicKeyPath);
+                var certificate = LoadCertificate(publicKeyPath, name);
+                certificate.PrivateKey = privateKey;
 
-                var thumbprint = GetThumbprintByOpenSSL(publicKeyPath);
-                var subject = GetCertificateSubjectByOpenSSL(publicKeyPath);
-
-                return new Certificate
-                {
-                    Name = name,
-                    Issuer = rootCA.Name,
-                    ValidFrom = DateTime.UtcNow,
-                    ValidTo = DateTime.UtcNow.AddDays(expiresDays),
-                    Thumbprint = thumbprint,
-                    Subject = subject,
-                    PublicKey = publicKey,
-                    PrivateKey = privateKey,
-                    Format = "PEM"
-                };
+                return certificate;
             }
         }
 
@@ -188,22 +163,10 @@ namespace certstore.cli {
                 }
 
                 var privateKey = File.ReadAllBytes(privateKeyPath);
-                var publicKey = File.ReadAllBytes(publicKeyPath);
+                var certificate = LoadCertificate(publicKeyPath, commonName);
+                certificate.PrivateKey = privateKey;
 
-                var thumbprint = GetThumbprintByOpenSSL(publicKeyPath);
-
-                return new Certificate
-                {
-                    Name = commonName,
-                    Issuer = issuer.Name,
-                    ValidFrom = DateTime.UtcNow,
-                    ValidTo = DateTime.UtcNow.AddDays(expiresDays),
-                    Thumbprint = thumbprint,
-                    Subject = commonName,
-                    PublicKey = publicKey,
-                    PrivateKey = privateKey,
-                    Format = "PEM"
-                };
+                return certificate;
             }
         }
 
@@ -253,22 +216,10 @@ namespace certstore.cli {
                 }
 
                 var privateKey = File.ReadAllBytes(privateKeyPath);
-                var publicKey = File.ReadAllBytes(publicKeyPath);
+                var certificate = LoadCertificate(publicKeyPath, commonName);
+                certificate.PrivateKey = privateKey;
 
-                var thumbprint = GetThumbprintByOpenSSL(publicKeyPath);
-
-                return new Certificate
-                {
-                    Name = commonName,
-                    Issuer = issuer.Name,
-                    ValidFrom = DateTime.UtcNow,
-                    ValidTo = DateTime.UtcNow.AddDays(expiresDays),
-                    Thumbprint = thumbprint,
-                    Subject = commonName,
-                    PublicKey = publicKey,
-                    PrivateKey = privateKey,
-                    Format = "PEM"
-                };
+                return certificate;
             }
         }
 
@@ -299,23 +250,35 @@ namespace certstore.cli {
                     throw new Exception("Failed to sign certificate request");
                 }
 
-                var signedCert = File.ReadAllBytes(signedCertPath);
-                var thumbprint = GetThumbprintByOpenSSL(signedCertPath);
-                var subject = GetCertificateSubjectByOpenSSL(signedCertPath);
-
-                return new Certificate
-                {
-                    Name = "SignedCert",
-                    Issuer = "IssuerCert",
-                    ValidFrom = DateTime.UtcNow,
-                    ValidTo = DateTime.UtcNow.AddDays(expiresDays),
-                    Thumbprint = thumbprint,
-                    Subject = subject,
-                    PublicKey = signedCert,
-                    PrivateKey = File.ReadAllBytes(privateKeyPath),
-                    Format = "PEM"
-                };
+                return LoadCertificate(signedCertPath, "SignedCert");
             }
+        }
+
+        internal static Certificate LoadCertificate(string certFilePath, string name)
+        {
+            var publicKey = File.ReadAllBytes(certFilePath);
+            var thumbprint = GetThumbprintByOpenSSL(certFilePath);
+            var subject = GetCertificateSubjectByOpenSSL(certFilePath);
+            var sigAlgorithm = GetCertificateSignatureAlgorithm(certFilePath);
+            var keyAlgorithm = GetCertificatePublicKeyAlgorithm(certFilePath);
+            var keyLength = GetCertificatePublicKeyLength(certFilePath);
+            var keyFormat = GetCertificateFormat(certFilePath);
+            var issuer = GetCertificateIssuer(certFilePath);
+
+            return new Certificate
+            {
+                Name = name,
+                Issuer = issuer,
+                ValidFrom = DateTime.UtcNow,
+                ValidTo = DateTime.UtcNow.AddDays(365),
+                Thumbprint = thumbprint,
+                Subject = subject,
+                PublicKey = publicKey,
+                Format = keyFormat,
+                KeyLength = keyLength,
+                KeyAlgorithm = keyAlgorithm,
+                SignatureAlgorithm = sigAlgorithm
+            };
         }
 
         /// <summary>
@@ -326,7 +289,6 @@ namespace certstore.cli {
         /// <exception cref="ApplicationException"> Throws exception when the certificate was not found </exception>
         internal static string GetThumbprintByOpenSSL(string certFilePath) 
         {
-            
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -380,6 +342,185 @@ namespace certstore.cli {
             var subject = output.Split('=')[1].Trim();
 
             return subject;
+        }
+
+        internal static string GetCertificateFormat(string certFilePath)
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "openssl",
+                    Arguments = $"x509 -in {certFilePath} -noout -text",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                throw new ApplicationException("Failed to get certificate format");
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            var format = output.Contains("BEGIN CERTIFICATE") ? "PEM" : "DER";
+
+            return format;
+        }
+
+        public static string GetCertificateIssuer(string certFilePath)
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "openssl",
+                    Arguments = $"x509 -in {certFilePath} -noout -issuer",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                throw new ApplicationException("Failed to get certificate issuer");
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            var issuer = output.Split('=')[1].Trim();
+
+            return issuer;
+        }
+
+        public static string GetCertificateSignatureAlgorithm(string certFilePath)
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "openssl",
+                    Arguments = $"x509 -in {certFilePath} -noout -text",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                throw new ApplicationException("Failed to get certificate signature algorithm");
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            var token = "Public Key Algorithm: ";
+
+            var algorithm = output.Substring(output.IndexOf(token) + token.Length).Split('\n')[0].Trim();
+
+            return algorithm;
+        }
+
+        public static string GetCertificatePublicKeyAlgorithm(string certFilePath)
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "openssl",
+                    Arguments = $"x509 -in {certFilePath} -noout -text",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                throw new ApplicationException("Failed to get certificate algorithm");
+            }
+
+            var output = process.StandardOutput.ReadToEnd();
+            var token = "Signature Algorithm: ";
+
+            var algorithm = output.Substring(output.IndexOf(token) + token.Length).Split('\n')[0].Trim();
+
+            return algorithm;
+        }
+
+        public static string GetCertificatePublicKeyLength(string certFilePath)
+        {
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "openssl",
+                    Arguments = $"x509 -in {certFilePath} -noout -text",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            process.Start();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                throw new ApplicationException("Failed to get certificate key length");
+            }
+
+            var token = "Public-Key: (";
+            var output = process.StandardOutput.ReadToEnd();
+
+            var keyLength = output.Substring(output.IndexOf(token) + token.Length).Split(' ')[0].Trim();
+            keyLength = System.Text.RegularExpressions.Regex.Match(keyLength, @"\d+").Value;
+
+            return keyLength;
+        }
+
+        public static bool VerifyCertificate(Certificate certificate)
+        {
+            using(var tempFolder = new TempFolder())
+            {   
+                var publicKeyPath = Path.Combine(tempFolder.FolderPath, "public.crt");
+
+                File.WriteAllBytes(publicKeyPath, certificate.PublicKey);
+
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "openssl",
+                        Arguments = $"verify -CAfile {publicKeyPath} {publicKeyPath}",
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

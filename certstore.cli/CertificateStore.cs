@@ -58,7 +58,7 @@ namespace certstore.cli
 
                 using (var command = new SQLiteCommand(connection))
                 {
-                    command.CommandText = "CREATE TABLE IF NOT EXISTS Certificates (Name TEXT PRIMARY KEY, Issuer TEXT, ValidFrom TEXT, ValidTo TEXT, Thumbprint TEXT, Subject TEXT, PublicKey BLOB, PrivateKey BLOB)";
+                    command.CommandText = "CREATE TABLE IF NOT EXISTS Certificates (Name TEXT PRIMARY KEY, Issuer TEXT, ValidFrom TEXT, ValidTo TEXT, Thumbprint TEXT, Subject TEXT, PublicKey BLOB, PrivateKey BLOB, KeyLength TEXT, KeyAlgorithm TEXT, SignatureAlgorithm TEXT, Format TEXT)";
                     command.ExecuteNonQuery();
                 }
             }
@@ -77,7 +77,7 @@ namespace certstore.cli
                 connection.Open();
                 using (var command = new SQLiteCommand(connection))
                 {
-                    command.CommandText = "INSERT INTO Certificates (Name, Issuer, ValidFrom, ValidTo, Thumbprint, Subject, PublicKey, PrivateKey) VALUES (@name, @issuer, @validFrom, @validTo, @thumbprint, @subject, @publicKey, @privateKey)";
+                    command.CommandText = "INSERT INTO Certificates (Name, Issuer, ValidFrom, ValidTo, Thumbprint, Subject, PublicKey, PrivateKey, KeyLength, KeyAlgorithm, SignatureAlgorithm, Format) VALUES (@name, @issuer, @validFrom, @validTo, @thumbprint, @subject, @publicKey, @privateKey, @keyLength, @keyAlgorithm, @signatureAlgorithm, @format)";
                     
                     command.Parameters.AddWithValue("@name", certificate.Name);
                     command.Parameters.AddWithValue("@issuer", certificate.Issuer);
@@ -87,6 +87,10 @@ namespace certstore.cli
                     command.Parameters.AddWithValue("@subject", certificate.Subject);
                     command.Parameters.AddWithValue("@publicKey", certificate.PublicKey);
                     command.Parameters.AddWithValue("@privateKey", certificate.PrivateKey);
+                    command.Parameters.AddWithValue("@keyLength", certificate.KeyLength);
+                    command.Parameters.AddWithValue("@keyAlgorithm", certificate.KeyAlgorithm);
+                    command.Parameters.AddWithValue("@signatureAlgorithm", certificate.SignatureAlgorithm);
+                    command.Parameters.AddWithValue("@format", certificate.Format);
 
                     command.ExecuteNonQuery();
                 }
@@ -116,7 +120,11 @@ namespace certstore.cli
                                 Thumbprint = reader.GetString(4),
                                 Subject = reader.GetString(5),
                                 PublicKey = reader["PublicKey"] as byte[] ?? new byte[0],
-                                PrivateKey =  reader["PrivateKey"] as byte[] ?? new byte[0]
+                                PrivateKey =  reader["PrivateKey"] as byte[] ?? new byte[0],
+                                KeyLength = reader.GetString(8),
+                                KeyAlgorithm = reader.GetString(9),
+                                SignatureAlgorithm = reader.GetString(10),
+                                Format = reader.GetString(11)
                             };
 
                             return certificate;
@@ -156,7 +164,11 @@ namespace certstore.cli
                                 Thumbprint = reader.GetString(4),
                                 Subject = reader.GetString(5),
                                 PublicKey = reader["PublicKey"] as byte[] ?? new byte[0],
-                                PrivateKey =  reader["PrivateKey"] as byte[] ?? new byte[0]
+                                PrivateKey =  reader["PrivateKey"] as byte[] ?? new byte[0],
+                                KeyLength = reader.GetString(8),
+                                KeyAlgorithm = reader.GetString(9),
+                                SignatureAlgorithm = reader.GetString(10),
+                                Format = reader.GetString(11)
                             };
 
                             certificates.Add(certificate);

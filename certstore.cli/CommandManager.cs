@@ -207,6 +207,7 @@ namespace certstore.cli
             foreach (var certificate in certificates)
             {
                 Console.WriteLine(certificate);
+                Console.WriteLine();
             }
         }
 
@@ -248,8 +249,6 @@ namespace certstore.cli
             Console.WriteLine("Certificate removed: " + certIdentifier);
         }
 
-
-
         private static void GetCertificateThumbprint(string[] args)
         {
             if (args.Length < 2)
@@ -273,13 +272,20 @@ namespace certstore.cli
 
         private static void AddCertificateFile(string[] args)
         {
-            if (args.Length < 2)
+            if (args.Length < 3)
             {
-                Console.WriteLine("Usage: add-certificate-file <filePath>");
+                Console.WriteLine("Usage: add-certificate-file <filePath> <name>");
                 return;
             }
             var filePath = args[1];
-            // Implement add certificate file logic here
+            var name = args[2];
+        
+            var store = new CertificateStore("certstore.db");
+            var certificate = OpenSSLProvider.LoadCertificate(filePath, name);
+            store.AddCertificate(certificate);
+
+            Console.WriteLine("Certificate added");
+            Console.WriteLine(certificate);
         }
     }
 }

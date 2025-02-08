@@ -19,11 +19,14 @@ namespace certstore.cli
         public string PrivateKeyBase64 => Convert.ToBase64String(PrivateKey);
 
         public string Format { get; set; } = string.Empty;
+        public string KeyLength { get; set; } = string.Empty;
+        public string KeyAlgorithm { get; set; } = string.Empty;
+        public string SignatureAlgorithm { get; set; } = string.Empty;
 
         public override string ToString()
         {
-            return $"Name: {Name}\nIssuer: {Issuer}\nValidFrom: {ValidFrom}\nValidTo: {ValidTo}\nThumbprint: {Thumbprint}\nSubject: {Subject}\nFormat: {Format}";
+            var hasPrivateKey = PrivateKey?.Length > 0;
+            return $"Name: {Name}\nIssuer: {Issuer}\nValidFrom: {ValidFrom}\nValidTo: {ValidTo}\nThumbprint: {Thumbprint}\nSubject: {Subject}\nFormat: {Format}\nKeyLength: {KeyLength}\nKeyAlgorithm: {KeyAlgorithm}\nSignatureAlgorithm: {SignatureAlgorithm}\nHasPrivateKey: {hasPrivateKey}";
         }
     }
-        
 }
