@@ -338,8 +338,9 @@ namespace certstore.cli {
                 throw new ApplicationException("Failed to get certificate subject");
             }
 
+            var token = "subject=";
             var output = process.StandardOutput.ReadToEnd();
-            var subject = output.Split('=')[1].Trim();
+            var subject = output.Substring(output.IndexOf(token) + token.Length).Split('\n')[0].Trim();
 
             return subject;
         }
@@ -394,8 +395,9 @@ namespace certstore.cli {
                 throw new ApplicationException("Failed to get certificate issuer");
             }
 
+            var token = "issuer=";
             var output = process.StandardOutput.ReadToEnd();
-            var issuer = output.Split('=')[1].Trim();
+            var issuer = output.Substring(output.IndexOf(token) + token.Length).Split('\n')[0].Trim();
 
             return issuer;
         }
